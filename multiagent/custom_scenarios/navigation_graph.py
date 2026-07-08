@@ -371,20 +371,17 @@ class Scenario(BaseScenario):
                 return False
 
     def reward(self, agent: Agent, world: World) -> float:
-        # Agents are rewarded based on distance to
-        # its landmark, penalized for collisions
+        # Standard simple_spread (Coverage) reward
         rew = 0
-        agents_goal = world.get_entity(entity_type="landmark", id=agent.id)
-        dist_to_goal = np.sqrt(
-            np.sum(np.square(agent.state.p_pos - agents_goal.state.p_pos))
-        )
-        if dist_to_goal < self.min_dist_thresh:
-            rew += self.goal_rew
-        else:
-            rew -= dist_to_goal
+        for l in world.landmarks:
+            dists = [
+                np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
+                for a in world.agents
+            ]
+            rew -= min(dists)
+            
         if agent.collide:
             for a in world.agents:
-                # do not consider collision with itself
                 if a.id == agent.id:
                     continue
                 if self.is_collision(a, agent):
