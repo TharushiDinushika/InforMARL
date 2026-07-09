@@ -127,22 +127,27 @@ def modify_args(
     Modify the args used to train the model
     """
     import yaml
+    import os
 
-    with open(str(model_dir) + "/config.yaml") as f:
-        ydict = yaml.load(f)
+    config_path = str(model_dir) + "/config.yaml"
+    if os.path.exists(config_path):
+        with open(config_path) as f:
+            ydict = yaml.safe_load(f)
 
-    print("_" * 50)
-    for k, v in ydict.items():
-        if k in exclude_args:
-            print(f"Using {k} = {vars(args)[k]}")
-            # print(f"Skipping {k} with value {args.k}")
-            continue
-        # all args have 'values' and 'desc' as keys
-        if type(v) == dict:
-            if "value" in v.keys():
-                # print(f'Setting attr {k} to {ydict[k]["value"]}')
-                setattr(args, k, ydict[k]["value"])
-    print("_" * 50)
+        print("_" * 50)
+        for k, v in ydict.items():
+            if k in exclude_args:
+                print(f"Using {k} = {vars(args)[k]}")
+                # print(f"Skipping {k} with value {args.k}")
+                continue
+            # all args have 'values' and 'desc' as keys
+            if type(v) == dict:
+                if "value" in v.keys():
+                    # print(f'Setting attr {k} to {ydict[k]["value"]}')
+                    setattr(args, k, ydict[k]["value"])
+        print("_" * 50)
+    else:
+        print(f"Warning: {config_path} not found (wandb was likely disabled). Using manually passed arguments.")
 
     # set some args manually
     args.cuda = False
@@ -158,6 +163,11 @@ def main(args):
     # model_dir = 'trained_models/navigation/Navigation/rmappo/wandb/offline-run-20210720_220614-1eqhk4l1/files'
     parser = get_config()
     all_args = parse_args(args, parser)
+    
+    if all_args.env_name == "GraphMPE":
+        from onpolicy.config import graph_config
+        all_args, parser = graph_config(args, parser)
+        
     all_args = modify_args(all_args.model_dir, all_args)
 
     if all_args.algorithm_name == "rmappo" or all_args.algorithm_name == "rmappg":
