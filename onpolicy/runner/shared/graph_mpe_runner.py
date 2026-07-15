@@ -92,8 +92,23 @@ class GMPERunner(Runner):
 
                 avg_ep_rew = np.mean(self.buffer.rewards) * self.episode_length
                 train_infos["average_episode_rewards"] = avg_ep_rew
+                
+                win_rate_str = ""
+                if self.all_args.scenario_name == "simple_tag_adapt_graph":
+                    win_rates = []
+                    for info in infos:
+                        if 'is_success' in info[0].keys():
+                            win_rates.append(1 if info[0]['is_success'] else 0)
+                    if len(win_rates) > 0:
+                        win_rate = np.mean(win_rates)
+                        win_rate_str = f" \twin rate: {win_rate:.3f}"
+                        if type(train_infos) == list:
+                            train_infos[0]["win_rate"] = win_rate
+                        else:
+                            train_infos["win_rate"] = win_rate
+
                 print(
-                    f"Average episode rewards is {avg_ep_rew:.3f} \t"
+                    f"Average episode rewards is {avg_ep_rew:.3f}{win_rate_str} \t"
                     f"Total timesteps: {total_num_steps} \t "
                     f"Percentage complete {total_num_steps / self.num_env_steps * 100:.3f}"
                 )
@@ -341,10 +356,27 @@ class GMPERunner(Runner):
         eval_average_episode_rewards = np.mean(
             eval_env_infos["eval_average_episode_rewards"]
         )
-        print(
-            "eval average episode rewards of agent: "
-            + str(eval_average_episode_rewards)
-        )
+        
+        if self.all_args.scenario_name == "simple_tag_adapt_graph":
+            win_rates = []
+            for info in eval_infos:
+                if 'is_success' in info[0].keys():
+                    win_rates.append(1 if info[0]['is_success'] else 0)
+            
+            win_rate_str = ""
+            if len(win_rates) > 0:
+                win_rate_mean = np.mean(win_rates) * 100
+                win_rate_std = (np.std(win_rates) * 100) / np.sqrt(len(win_rates))
+                win_rate_str = f"  win rate: {win_rate_mean:.2f} ± {win_rate_std:.2f} (%)"
+                eval_env_infos['eval_win_rate'] = [win_rate_mean]
+
+            print("eval average episode rewards of agent: {:.3f}{}".format(
+                eval_average_episode_rewards, win_rate_str))
+        else:
+            print(
+                "eval average episode rewards of agent: "
+                + str(eval_average_episode_rewards)
+            )
         self.log_env(eval_env_infos, total_num_steps)
 
     @torch.no_grad()
@@ -363,6 +395,7 @@ class GMPERunner(Runner):
             [],
             [],
         )
+        render_win_rates = []
 
         for episode in range(self.all_args.render_episodes):
             obs, agent_id, node_obs, adj = envs.reset()
@@ -447,10 +480,18 @@ class GMPERunner(Runner):
                         elapsed = calc_end - calc_start
                         if elapsed < self.all_args.ifi:
                             time.sleep(self.all_args.ifi - elapsed)
-                    else:
                         envs.render("human")
 
             env_infos = self.process_infos(infos)
+            
+            if self.all_args.scenario_name == "simple_tag_adapt_graph":
+                win_rates = []
+                for info in infos:
+                    if 'is_success' in info[0].keys():
+                        win_rates.append(1 if info[0]['is_success'] else 0)
+                if len(win_rates) > 0:
+                    render_win_rates.append(np.mean(win_rates))
+
             # print('_'*50)
             num_collisions = self.get_collisions(env_infos)
             frac, success = self.get_fraction_episodes(env_infos)
@@ -462,10 +503,27 @@ class GMPERunner(Runner):
             # print("Average episode rewards is: " +
             # str(np.mean(np.sum(np.array(episode_rewards), axis=0))))
 
-        print(rewards_arr)
-        print(frac_episode_arr)
-        print(success_rates_arr)
-        print(num_collisions_arr)
+        print("\n" + "="*50)
+        print("EVALUATION RESULTS SUMMARY")
+        print("="*50)
+        print(f"Total Episodes Evaluated: {self.all_args.render_episodes}")
+        print(f"Average Cumulative Reward: {np.mean(rewards_arr):.2f}")
+        print(f"Average Collisions/Agent:  {np.mean(num_collisions_arr):.2f}")
+        if self.all_args.scenario_name == "simple_tag_adapt_graph" and len(render_win_rates) > 0:
+            win_rate_mean = np.mean(render_win_rates) * 100
+            win_rate_std = (np.std(render_win_rates) * 100) / np.sqrt(len(render_win_rates))
+            print(f"Mean win rate            : {win_rate_mean:.2f} ± {win_rate_std:.2f} (%)")
+        else:
+            print(f"Goal Success Rate:         {np.mean(success_rates_arr)*100:.2f}%")
+            print(f"Time Required to Goal:     {np.mean(frac_episode_arr):.2f} (fraction of episode)")
+        print("-" * 50)
+        print("Per-Episode Rewards:")
+        for i, r in enumerate(rewards_arr):
+            if self.all_args.scenario_name == "simple_tag_adapt_graph" and len(render_win_rates) > i:
+                print(f"  Episode {i+1}: {r:.2f}  win rate: {render_win_rates[i]*100:.2f}%")
+            else:
+                print(f"  Episode {i+1}: {r:.2f}")
+        print("="*50 + "\n")
 
         if not get_metrics:
             if self.all_args.save_gifs:

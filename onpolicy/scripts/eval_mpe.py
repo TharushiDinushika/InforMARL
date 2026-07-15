@@ -60,6 +60,8 @@ def parse_args(args, parser):
     )
     parser.add_argument("--num_landmarks", type=int, default=3)
     parser.add_argument("--num_agents", type=int, default=2, help="number of players")
+    parser.add_argument("--num_good_agents", type=int, default=1, help="number of good agents")
+    parser.add_argument("--num_adversaries", type=int, default=3, help="number of adversaries")
     parser.add_argument(
         "--num_obstacles", type=int, default=3, help="Number of obstacles"
     )
@@ -229,7 +231,10 @@ def main(args):
     runner = Runner(config)
     # actor_state_dict = torch.load(str(model_dir) + '/actor.pt')
     # runner.policy.actor.load_state_dict(actor_state_dict)
-    runner.render(True)
+    if all_args.save_gifs:
+        runner.render(False)
+    else:
+        runner.render(True)
 
     # post process
     envs.close()

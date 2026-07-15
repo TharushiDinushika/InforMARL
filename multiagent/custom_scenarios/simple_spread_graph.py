@@ -16,7 +16,7 @@ class Scenario(BaseScenario):
         # set any world properties first
         world.dim_c = 2
         world.num_agents = args.num_agents
-        world.num_landmarks = args.num_landmarks  # 3
+        world.num_landmarks = args.num_landmarks 
         world.collaborative = True
         
         # Graph properties

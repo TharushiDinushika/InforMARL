@@ -636,7 +636,7 @@ class MultiAgentPPOEnv(MultiAgentBaseEnv):
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
             reward = self._get_reward(agent)
-            reward_n.append(reward)
+            reward_n.append([reward])
             done_n.append(self._get_done(agent))
             info = {"individual_reward": reward}
             env_info = self._get_info(agent)
@@ -798,7 +798,7 @@ class MultiAgentGraphEnv(MultiAgentBaseEnv):
             node_obs_n.append(node_obs)
             adj_n.append(adj)
             reward = self._get_reward(agent)
-            reward_n.append(reward)
+            reward_n.append([reward])
             done_n.append(self._get_done(agent))
             info = {"individual_reward": reward}
             env_info = self._get_info(agent)

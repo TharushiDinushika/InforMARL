@@ -90,6 +90,8 @@ def parse_args(args, parser):
     )
     parser.add_argument("--num_landmarks", type=int, default=3)
     parser.add_argument("--num_agents", type=int, default=2, help="number of players")
+    parser.add_argument("--num_good_agents", type=int, default=1, help="number of good agents")
+    parser.add_argument("--num_adversaries", type=int, default=3, help="number of adversaries")
     parser.add_argument(
         "--num_obstacles", type=int, default=3, help="Number of obstacles"
     )

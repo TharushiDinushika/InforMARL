@@ -277,7 +277,7 @@ class Runner(object):
         """
         collisions = 0
         for k, v in env_infos.items():
-            if "collision" in k:
+            if "collision" in k and len(v) > 0:
                 collisions += v[0]
         return collisions
 
@@ -302,14 +302,23 @@ class Runner(object):
         success = []
         for k, v in env_infos.items():
             if "time_to_goal" in k and "min_time_to_goal" not in k:
-                fracs.append(v[0] / (self.all_args.episode_length * self.dt))
-                # if didn't reach goal then time_to_goal >= episode_len * dt
-                if v[0] < self.all_args.episode_length * self.dt:
-                    success.append(1)
+                if len(v) > 0:
+                    fracs.append(v[0] / (self.all_args.episode_length * self.dt))
+                    # if didn't reach goal then time_to_goal >= episode_len * dt
+                    if v[0] < self.all_args.episode_length * self.dt:
+                        success.append(1)
+                    else:
+                        success.append(0)
                 else:
+                    fracs.append(0.0)
                     success.append(0)
-        assert len(success) == self.all_args.num_agents
-        if sum(success) == self.all_args.num_agents:
+
+        # fallback in case no agent keys were found at all
+        if len(success) != self.all_args.num_agents:
+            success = [0] * self.all_args.num_agents
+            fracs = [0.0] * self.all_args.num_agents
+
+        if sum(success) == self.all_args.num_agents and self.all_args.num_agents > 0:
             success = True
         else:
             success = False
