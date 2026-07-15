@@ -118,6 +118,8 @@ def modify_args(
     exclude_args: list = [
         "model_dir",
         "num_agents",
+        "num_good_agents",
+        "num_adversaries",
         "num_obstacles",
         "num_landmarks",
         "render_episodes",
@@ -155,8 +157,6 @@ def modify_args(
     args.cuda = False
     args.use_wandb = False
     args.use_render = True
-    args.save_gifs = True
-    args.n_rollout_threads = 1
 
     return args
 
@@ -187,7 +187,6 @@ def main(args):
     assert not (
         all_args.model_dir == None or all_args.model_dir == ""
     ), "set model_dir first"
-    assert all_args.n_rollout_threads == 1, "only support to use 1 env to render."
 
     device = torch.device("cpu")
 

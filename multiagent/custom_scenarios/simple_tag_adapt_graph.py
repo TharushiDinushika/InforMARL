@@ -54,6 +54,7 @@ class Scenario(BaseScenario):
             # ADAPT rule-based prey
             if not agent.adversary:
                 agent.action_callback = self.prey_policy
+                world.scripted_agents.append(agent)
                 
         # add landmarks (none)
         world.landmarks = [Landmark() for i in range(num_landmarks)]
@@ -177,48 +178,14 @@ class Scenario(BaseScenario):
         return {'is_success': self.game_winning_condition_met}
 
     def observation(self, agent, world):
-        # Observation includes pos, vel of itself
-        # and relative pos, vel of others, plus captured indicator for prey
-        # We interleave these per-entity so that the attention module can reshape it to (n_entities, token_dim)
+        # In graph-based MARL, relational features are handled by the GNN.
+        # The standard observation should only contain fixed-size ego features
+        # to allow zero-shot scaling to different numbers of agents.
+        is_prey = 1.0 if not agent.adversary else 0.0
+        is_predator = 1.0 if agent.adversary else 0.0
         
-        # Self features (dim = 4)
-        self_feats = np.concatenate([agent.state.p_vel, agent.state.p_pos])
-        
-        # Entity features
-        entity_feats = []
-        
-        # Landmarks (padded to 6 dims to match other agents)
-        for entity in world.landmarks:
-            if not getattr(entity, 'boundary', False):
-                rel_pos = entity.state.p_pos - agent.state.p_pos
-                pad = np.zeros(4) # pad vel (2), captured (1), and is_prey (1)
-                entity_feats.append(np.concatenate([rel_pos, pad]))
-                
-        agents = self.good_agents(world)
-        
-        # Other agents (dim = 6: rel_pos(2) + vel(2) + captured(1) + is_prey(1))
-        for other in world.agents:
-            if other is agent:
-                continue
-            
-            rel_pos = other.state.p_pos - agent.state.p_pos
-            vel = other.state.p_vel
-            
-            if not other.adversary:
-                ag_idx = agents.index(other)
-                is_captured = 1.0 if np.any(self.caught_matrix[:, ag_idx]) else 0.0
-                captured = np.array([is_captured])
-                is_prey = np.array([1.0])
-            else:
-                captured = np.array([0.0])
-                is_prey = np.array([0.0])
-                
-            entity_feats.append(np.concatenate([rel_pos, vel, captured, is_prey]))
-            
-        if len(entity_feats) > 0:
-            return np.concatenate([self_feats] + entity_feats)
-        else:
-            return self_feats
+        # Self features (dim = 6: vel(2) + pos(2) + is_prey(1) + is_predator(1))
+        return np.concatenate([agent.state.p_vel, agent.state.p_pos, [is_prey, is_predator]])
 
     def get_id(self, agent: Agent) -> arr:
         return np.array([agent.global_id])
